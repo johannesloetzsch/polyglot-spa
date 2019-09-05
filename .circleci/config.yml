@@ -1,0 +1,66 @@
+version: 2
+    
+jobs:
+  build-prod:
+    docker:
+      #- image: nixos/nix
+      - image: circleci/clojure:lein-node
+    environment:
+      #LEIN_ROOT: nbd
+      JVM_OPTS: -Xmx3200m # limit the maximum heap size to prevent out of memory errors
+    steps:
+      - checkout # check out source code to working directory
+      - restore_cache: # restores saved cache if checksum hasn't changed since the last run
+          key: cci-demo-clojure-{{ checksum "project.clj" }}
+      - run: lein deps
+      - run: npm install
+      - save_cache: # generate and store cache in the .m2 directory using a key template
+          paths:
+            - ~/.m2
+            - ./node_modules
+          key: cci-demo-clojure-{{ checksum "project.clj" }}
+
+      - run: lein prod
+
+      #- store_artifacts: # Upload test summary for display in Artifacts: https://circleci.com/docs/2.0/artifacts/ 
+      #    path: resources/public
+      #    destination: public
+
+      - persist_to_workspace:
+          root: resources
+          paths: public
+
+  deploy:
+    docker:
+      - image: node:8.10.0
+    steps:
+      - checkout
+      - attach_workspace:
+          at: resources
+      - run:
+          name: Disable jekyll builds
+          command: touch resources/public/.nojekyll
+      - run:
+          name: Install and configure dependencies
+          command: |
+            npm install -g --silent gh-pages@2.0.1
+            git config user.email "ci-build@johannesloetzsch.de"
+            git config user.name "ci-build"
+      - add_ssh_keys:
+          fingerprints:
+            - "ef:59:c4:e6:b7:1b:ba:ca:aa:2b:14:75:24:3d:da:af"
+      - run:
+          name: Deploy to gh-pages branch
+          command: gh-pages --dotfiles --message "[skip ci] Updates" --dist resources/public
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - build-prod
+      - deploy:
+          requires:
+            - build-prod
+          filters:
+            branches:
+              only: master
