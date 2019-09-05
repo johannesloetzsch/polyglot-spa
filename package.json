@@ -1,0 +1,12 @@
+{
+  "devDependencies": {
+    "shadow-cljs": "2.8.52"
+  },
+  "dependencies": {
+    "create-react-class": "^15.6.3",
+    "karma-cli": "^2.0.0",
+    "karma-junit-reporter": "^1.2.0",
+    "react": "^16.8.6",
+    "react-dom": "^16.8.6"
+  }
+}
